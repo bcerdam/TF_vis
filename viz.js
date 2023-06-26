@@ -2,7 +2,8 @@
 // Dimensiones del gráfico
 const ancho = 1200;
 const alto = 800;
-const margen = { superior: 20, derecho: 20, inferior: 30, izquierdo: 30 };
+const margen = { superior: 40, derecho: 40, inferior: 40, izquierdo: 40 };
+const margen_2 = { superior: 5, derecho: 40, inferior: 5, izquierdo: 40 };
 const anchoGrafico = ancho - margen.izquierdo - margen.derecho;
 const altoGrafico = alto - margen.superior - margen.inferior;
 
@@ -72,10 +73,9 @@ grafico.selectAll(".linea")
   .attr("d", d => linea(d.valores))
   .attr("fill", "none")
   .attr("stroke", (d, i) => colores(i))
-  .attr("stroke-width", 2);
+  .attr("stroke-width", 4);  
 
-// Agregar puntos a cada dato
-grafico.selectAll(".punto")
+  grafico.selectAll(".punto")
   .data(datos)
   .enter()
   .selectAll("circle")
@@ -86,7 +86,7 @@ grafico.selectAll(".punto")
   .attr("cx", (d, i) => escalaX(i))
   .attr("cy", d => escalaY(d))
   .attr("r", 3)
-  .attr("fill", "black");
+  .attr("fill", "rgba(0, 0, 0, 0.75)"); 
 
 // Agregar ejes
 grafico.append("g")
@@ -102,4 +102,81 @@ grafico.selectAll("g.axis g.tick line")
   .attr("stroke-dasharray", "3,3");
 
 grafico.selectAll("g.axis path.domain")
+  .attr("stroke", "gray");
+
+
+///////
+
+// Driver data
+const driverData = [
+  { driverId: "Lewis Hamilton", mean_seconds: 90 },
+  { driverId: "Nick Heidfeld", mean_seconds: 91 },
+  { driverId: "Nico Rosberg", mean_seconds: 91 },
+  { driverId: "Fernando Alonso", mean_seconds: 91 },
+  { driverId: "Heikki Kovalainen", mean_seconds: 90 },
+  { driverId: "Kazuki Nakajima", mean_seconds: 100 },
+  { driverId: "Sebastien Bourdais", mean_seconds: 96 },
+  { driverId: "Kimi Raikkonen", mean_seconds: 90 },
+  { driverId: "Robert Kubica", mean_seconds: 90 },
+  { driverId: "Timo Glock", mean_seconds: 101 },
+  { driverId: "Nelson Piquet Jr", mean_seconds: 94 },
+  { driverId: "David Coulthard", mean_seconds: 92 },
+  { driverId: "Jarno Trulli", mean_seconds: 90 },
+  { driverId: "Mark Webber", mean_seconds: 90 },
+  { driverId: "Jenson Button", mean_seconds: 93 },
+  { driverId: "Anthony Davidson", mean_seconds: 101 },
+  { driverId: "Sebastian Vettel", mean_seconds: 90 },
+  { driverId: "Rubens Barrichello", mean_seconds: 92 },
+  { driverId: "Giancarlo Fisichella", mean_seconds: 92 },
+  { driverId: "Felipe Massa", mean_seconds: 91 },
+];
+
+// Crear grupo para el gráfico del histograma
+const histograma = svg2.append("g")
+  .attr("transform", `translate(${margen_2.izquierdo},${margen_2.superior})`);
+
+// Obtener los valores del campo mean_seconds en un arreglo plano
+const valoresHistograma = driverData.map(d => d.mean_seconds);
+
+// Create a scale for the X-axis of the histogram
+const escalaXHistograma = d3.scaleBand()
+  .domain(driverData.map(d => d.driverId))
+  .range([0, anchoGrafico])
+  .padding(0.1);
+
+// Create a scale for the Y-axis of the histogram
+const escalaYHistograma = d3.scaleLinear()
+  .domain([85, d3.max(driverData, d => d.mean_seconds)])
+  .range([altoGrafico, 0]);
+
+// Add the bars to the histogram
+histograma.selectAll(".barra")
+  .data(driverData)
+  .enter()
+  .append("rect")
+  .attr("class", "barra")
+  .attr("x", d => escalaXHistograma(d.driverId))
+  .attr("y", d => escalaYHistograma(d.mean_seconds))
+  .attr("width", escalaXHistograma.bandwidth())
+  .attr("height", d => altoGrafico - escalaYHistograma(d.mean_seconds))
+  .attr("fill", (d, i) => d3.schemeCategory10[i % 10]);
+
+// Add X-axis
+histograma.append("g")
+  .attr("transform", `translate(0, ${altoGrafico})`)
+  .call(d3.axisBottom(escalaXHistograma))
+  .selectAll("text")
+  .attr("transform", "rotate(-45)")
+  .style("text-anchor", "end");
+
+// Add Y-axis
+histograma.append("g")
+  .call(d3.axisLeft(escalaYHistograma));
+
+// Style the histogram axes
+histograma.selectAll("g.axis g.tick line")
+  .attr("stroke", "gray")
+  .attr("stroke-dasharray", "3,3");
+
+histograma.selectAll("g.axis path.domain")
   .attr("stroke", "gray");
