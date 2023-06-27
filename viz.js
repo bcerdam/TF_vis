@@ -180,3 +180,117 @@ histograma.selectAll("g.axis g.tick line")
 
 histograma.selectAll("g.axis path.domain")
   .attr("stroke", "gray");
+
+
+////////////
+
+// Create group for the boxplots
+const boxplots = svg3.append("g")
+  .attr("transform", `translate(${margen.izquierdo},${margen.superior})`);
+
+// Calculate boxplot statistics for each data point
+const boxplotData = datos.map(d => {
+  const sortedValues = d.valores.sort(d3.ascending);
+  const q1 = d3.quantile(sortedValues, 0.25);
+  const median = d3.quantile(sortedValues, 0.5);
+  const q3 = d3.quantile(sortedValues, 0.75);
+  const iqr = q3 - q1;
+  const min = q1 - 1.5 * iqr;
+  const max = q3 + 1.5 * iqr;
+  return { equipo: d.equipo, values: sortedValues, q1, median, q3, min, max };
+});
+
+// Create a scale for the X-axis of the boxplots
+const escalaXBoxplots = d3.scaleBand()
+  .domain(boxplotData.map(d => d.equipo))
+  .range([0, anchoGrafico])
+  .padding(0.1);
+
+// Create a scale for the Y-axis of the boxplots
+const escalaYBoxplots = d3.scaleLinear()
+  .domain([0, d3.max(datos.flatMap(d => d.valores))]) // Update the domain
+  .range([altoGrafico, 0]);
+
+// Add the boxes to the boxplots
+boxplots.selectAll(".box")
+  .data(boxplotData)
+  .enter()
+  .append("rect")
+  .attr("class", "box")
+  .attr("x", d => escalaXBoxplots(d.equipo))
+  .attr("y", d => escalaYBoxplots(d.q3))
+  .attr("width", escalaXBoxplots.bandwidth())
+  .attr("height", d => escalaYBoxplots(d.q1) - escalaYBoxplots(d.q3))
+  .attr("fill", "lightgray");
+
+boxplots.selectAll(".median-line")
+  .data(boxplotData)
+  .enter()
+  .append("line")
+  .attr("class", "median-line")
+  .attr("x1", d => escalaXBoxplots(d.equipo))
+  .attr("x2", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth())
+  .attr("y1", d => escalaYBoxplots(d.median))
+  .attr("y2", d => escalaYBoxplots(d.median))
+  .attr("stroke", "black")
+  .attr("stroke-width", 2);
+
+// Add the whiskers to the boxplots
+boxplots.selectAll(".whisker")
+  .data(boxplotData)
+  .enter()
+  .append("line")
+  .attr("class", "whisker")
+  .attr("x1", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2)
+  .attr("x2", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2)
+  .attr("y1", d => escalaYBoxplots(Math.min(d.max, d3.max(d.values))))
+  .attr("y2", d => escalaYBoxplots(Math.max(d.min, d3.min(d.values))))
+  .attr("stroke", "black")
+  .attr("stroke-width", 1)
+  .attr("stroke-dasharray", "4");
+
+// Add horizontal lines for the maximum and minimum values (shorter lines)
+const lineLength = escalaXBoxplots.bandwidth() * 0.4; // Adjust the line length as needed
+
+boxplots.selectAll(".max-line")
+  .data(boxplotData)
+  .enter()
+  .append("line")
+  .attr("class", "max-line")
+  .attr("x1", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2 - lineLength / 2)
+  .attr("x2", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2 + lineLength / 2)
+  .attr("y1", d => escalaYBoxplots(Math.min(d.max, d3.max(d.values))))
+  .attr("y2", d => escalaYBoxplots(Math.min(d.max, d3.max(d.values))))
+  .attr("stroke", "black")
+  .attr("stroke-width", 1);
+
+boxplots.selectAll(".min-line")
+  .data(boxplotData)
+  .enter()
+  .append("line")
+  .attr("class", "min-line")
+  .attr("x1", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2 - lineLength / 2)
+  .attr("x2", d => escalaXBoxplots(d.equipo) + escalaXBoxplots.bandwidth() / 2 + lineLength / 2)
+  .attr("y1", d => escalaYBoxplots(Math.max(d.min, d3.min(d.values))))
+  .attr("y2", d => escalaYBoxplots(Math.max(d.min, d3.min(d.values))))
+  .attr("stroke", "black")
+  .attr("stroke-width", 1);
+
+
+// Add the X-axis to the boxplots
+svg3.append("g")
+  .attr("transform", `translate(${margen.izquierdo},${altoGrafico + margen.superior})`)
+  .call(d3.axisBottom(escalaXBoxplots));
+
+// Add the Y-axis to the boxplots
+svg3.append("g")
+  .attr("transform", `translate(${margen.izquierdo},${margen.superior})`)
+  .call(d3.axisLeft(escalaYBoxplots));
+
+// Add a title to the boxplots
+svg3.append("text")
+  .attr("x", (anchoGrafico + margen.izquierdo + margen.derecho) / 2)
+  .attr("y", margen.superior / 2)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "16px")
+  .text("Boxplots of Team Scores");
